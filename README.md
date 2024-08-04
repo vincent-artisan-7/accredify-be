@@ -28,6 +28,7 @@ Use the following credentials to log in:
 
 Email: test@example.com
 Password: 123456
+
 Navigate to the login page of the application to enter these credentials and access the application.
 
 ## Routes Configuration
