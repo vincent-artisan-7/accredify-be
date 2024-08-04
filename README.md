@@ -16,8 +16,26 @@ cd accredify-be
 ```
 
 ### 2. PHP Artisan
+Run the following commands to set up the database and seed initial data:
 
 ```bash
 php artisan migrate
 php artisan db:seed
 ```
+
+### 3. Login
+Use the following credentials to log in:
+
+Email: test@example.com
+Password: 123456
+Navigate to the login page of the application to enter these credentials and access the application.
+
+## Routes Configuration
+The application's routing is configured as follows:
+
+- Welcome Page: Displays a welcome message and links to login and register pages.
+    - URL: /
+- Dashboard Page: Accessible only to authenticated and verified users. Displays the dashboard.
+    - URL: /dashboard
+- JSON Upload Page: Allows authenticated users to upload JSON files.
+    - URL: /json-upload

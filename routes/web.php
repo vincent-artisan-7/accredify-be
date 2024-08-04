@@ -4,7 +4,6 @@ use App\Http\Controllers\ProfileController;
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
-use Tighten\Ziggy\Ziggy;
 
 // Route for Ziggy (if needed for routing)
 // Route::get('/ziggy', function () {
@@ -13,13 +12,18 @@ use Tighten\Ziggy\Ziggy;
 
 // Welcome page
 Route::get('/', function () {
-    return Inertia::render('Welcome', [
-        'canLogin' => Route::has('login'),
-        'canRegister' => Route::has('register'),
-        'laravelVersion' => Application::VERSION,
-        'phpVersion' => PHP_VERSION,
-    ]);
-});
+    // Redirect to the login page if the user is not authenticated
+    if (auth()->check()) {
+        return Inertia::render('Welcome', [
+            'canLogin' => Route::has('login'),
+            'canRegister' => Route::has('register'),
+            'laravelVersion' => Application::VERSION,
+            'phpVersion' => PHP_VERSION,
+        ]);
+    } else {
+        return redirect()->route('login');
+    }
+})->name('home');
 
 // Dashboard page
 Route::get('/dashboard', function () {
