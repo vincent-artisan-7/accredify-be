@@ -11,5 +11,5 @@ Follow these steps to set up the project locally:
 ### 1. Clone the Repository
 
 ```bash
-git clone https://github.com/yourusername/your-repository-name.git
-cd your-repository-name
+git clone https://github.com/vincent-artisan-7/accredify-be.git
+cd accredify-be
