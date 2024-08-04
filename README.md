@@ -13,3 +13,11 @@ Follow these steps to set up the project locally:
 ```bash
 git clone https://github.com/vincent-artisan-7/accredify-be.git
 cd accredify-be
+```
+
+### 2. PHP Artisan
+
+```bash
+php artisan migrate
+php artisan db:seed
+```
