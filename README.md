@@ -40,3 +40,11 @@ The application's routing is configured as follows:
     - URL: /dashboard
 - JSON Upload Page: Allows authenticated users to upload JSON files.
     - URL: /json-upload
+
+### Frontend
+The project frontend is running React Typescript and InertiaJS rendering.
+
+Please run `npm` command to navigate main page.
+```bash
+npm run dev
+```
