@@ -16,20 +16,10 @@ const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribut
 axios.defaults.headers.common['X-CSRF-TOKEN'] = csrfToken;
 axios.defaults.withCredentials = true;
 
-// Define the response type according to the API response
-interface VerificationResponse {
-    data: VerificationResponseData;
-}
-
-interface VerificationResponseData {
-    issuer: string;
-    result: 'verified' | 'invalid_signature' | 'invalid_recipient' | 'invalid_issuer';
-}
-
-// Define a type for the result used in the component
+// Use the same type for both API response and component state
 interface VerificationResultProps {
-    status: 'verified' | 'invalid_signature' | 'invalid_recipient' | 'invalid_issuer';
-    issuerName: string;
+    result: 'verified' | 'invalid_signature' | 'invalid_recipient' | 'invalid_issuer';
+    issuer: string;
 }
 
 const AccredifyUpload = () => {
@@ -46,28 +36,26 @@ const AccredifyUpload = () => {
 
     const submit: FormEventHandler = async (e) => {
         e.preventDefault();
-    
+
         if (!file) return;
-    
+
         const formData = new FormData();
         formData.append('file', file);
-    
+
         try {
-            // Ensure CSRF token is included
-            // await axios.get('/sanctum/csrf-cookie'); // Get CSRF token from Laravel
-    
             const response = await axios.post('/api/verify-json', formData, {
                 headers: {
                     'Content-Type': 'multipart/form-data',
                 },
             });
-    
+
             console.log('Response:', response.data);
-            const responseData: VerificationResponseData = response.data.data;
+            const responseData: VerificationResultProps = response.data.data;
             setResult({
-                status: responseData.result,
-                issuerName: responseData.issuer,
-            });            setUploadError(null); // Clear previous errors
+                result: responseData.result,
+                issuer: responseData.issuer,
+            });
+            setUploadError(null); // Clear previous errors
         } catch (error: any) {
             if (error.response && error.response.data && error.response.data.message) {
                 setUploadError(error.response.data.message);
@@ -76,7 +64,6 @@ const AccredifyUpload = () => {
             }
         }
     };
-    
 
     return (
         <AuthenticatedLayout
@@ -113,8 +100,8 @@ const AccredifyUpload = () => {
                         {result && (
                             <div className="mt-4">
                                 <VerificationResult
-                                    status={result.status}
-                                    issuerName={result.issuerName}
+                                    status={result.result}
+                                    issuerName={result.issuer}
                                 />
                             </div>
                         )}

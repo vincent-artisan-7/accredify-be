@@ -3,70 +3,120 @@
 namespace App\Services;
 
 use App\DTO\VerificationResult;
+use App\Models\Verification;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
 
 class JsonVerificationService
 {
-    public function verifyJson(array $json): VerificationResult
+    public function verifyFile(Request $request): VerificationResult
     {
-        // Validate recipient
-        if (empty($json['data']['recipient']['name']) || empty($json['data']['recipient']['email'])) {
-            return new VerificationResult('invalid_recipient', $json['data']['issuer']['name']);
+        // Validate the request
+        $request->validate([
+            'file' => 'required|file|mimes:json|max:2048',
+        ]);
+
+        // Store the file
+        $file = $request->file('file');
+        $fileType = $file->getClientOriginalExtension(); // Get file extension
+        $content = file_get_contents($file->getPathname());
+        $json = json_decode($content, true);
+
+        if ($json === null) {
+            return new VerificationResult('invalid_signature', '');
         }
 
-        // Validate issuer
-        $issuer = $json['data']['issuer'];
-        if (empty($issuer['name']) || empty($issuer['identityProof']['key']) || empty($issuer['identityProof']['location'])) {
-            return new VerificationResult('invalid_issuer', $issuer['name']);
+        // Extract data from JSON
+        $data = $json['data'] ?? [];
+        $signature = $json['signature'] ?? [];
+
+        // Condition 1: Validate data.recipient
+        if (empty($data['recipient']['name']) || empty($data['recipient']['email'])) {
+            return new VerificationResult('invalid_recipient', $data['issuer']['name'] ?? '');
         }
 
-        // Verify issuer's DNS record
-        $dnsResponse = Http::get('https://dns.google/resolve', [
-            'name' => $issuer['identityProof']['location'],
-            'type' => 'TXT',
-        ])->json();
+        // Condition 2: Validate data.issuer
+        if (empty($data['issuer']['name']) || empty($data['issuer']['identityProof'])) {
+            return new VerificationResult('invalid_issuer', $data['issuer']['name'] ?? '');
+        }
 
-        $key = $issuer['identityProof']['key'];
-        $dnsValid = false;
-        foreach ($dnsResponse['Answer'] as $record) {
-            if (str_contains($record['data'], $key)) {
-                $dnsValid = true;
+        $identityProofKey = $data['issuer']['identityProof']['key'] ?? '';
+        $identityProofLocation = $data['issuer']['identityProof']['location'] ?? '';
+
+        // Check DNS TXT record
+        $dnsRecord = Http::get("https://dns.google/resolve?name={$identityProofLocation}&type=TXT");
+        $txtRecords = $dnsRecord->json()['Answer'] ?? [];
+
+        $found = false;
+        foreach ($txtRecords as $record) {
+            if (strpos($record['data'], $identityProofKey) !== false) {
+                $found = true;
                 break;
             }
         }
 
-        if (!$dnsValid) {
-            return new VerificationResult('invalid_issuer', $issuer['name']);
+        if (!$found) {
+            Verification::create([
+                'user_id' => $request->user() ? $request->user()->id : null,
+                'file_type' => $fileType,
+                'verification_result' => 'invalid_issuer',
+                'timestamp' => now(),
+            ]);
+            return new VerificationResult('invalid_issuer', $data['issuer']['name'] ?? '');
         }
 
-        // Validate signature
-        $computedHash = $this->computeTargetHash($json['data']);
-        if ($computedHash !== $json['signature']['targetHash']) {
-            return new VerificationResult('invalid_signature', $issuer['name']);
+        // Condition 3: Validate signature.targetHash
+        $computedHash = $this->computeTargetHash($data);
+
+        if ($computedHash === $signature['targetHash']) {
+            Verification::create([
+                'user_id' => $request->user() ? $request->user()->id : null,
+                'file_type' => $fileType,
+                'verification_result' => 'verified',
+                'timestamp' => now(),
+            ]);
+            return new VerificationResult('verified', $data['issuer']['name'] ?? '');
         }
 
-        return new VerificationResult('verified', $issuer['name']);
+        Verification::create([
+            'user_id' => $request->user() ? $request->user()->id : null,
+            'file_type' => $fileType,
+            'verification_result' => 'invalid_signature',
+            'timestamp' => now(),
+        ]);
+        return new VerificationResult('invalid_signature', $data['issuer']['name'] ?? '');
     }
 
     private function computeTargetHash(array $data): string
     {
-        $flattened = $this->flatten($data);
-        $hashes = array_map(fn($key, $value) => hash('sha256', json_encode([$key => $value])), array_keys($flattened), $flattened);
-        sort($hashes);
-        return hash('sha256', json_encode($hashes));
+        $propertyHashes = [];
+
+        // Traverse and compute individual property hashes
+        $this->traverseAndHash($data, '', $propertyHashes);
+
+        // Sort the hashes alphabetically
+        sort($propertyHashes);
+
+        // Combine the sorted hashes into a JSON-encoded string
+        $combinedHashes = json_encode($propertyHashes);
+
+        // Test Hash results
+        // dd($propertyHashes, $combinedHashes, hash('sha256', $combinedHashes));
+
+        // Compute the final hash of the combined hashes
+        return hash('sha256', $combinedHashes);
     }
 
-    private function flatten(array $array, string $prefix = ''): array
+    private function traverseAndHash(array $data, string $path, array &$hashes): void
     {
-        $result = [];
-        foreach ($array as $key => $value) {
-            $newKey = $prefix === '' ? $key : "{$prefix}.{$key}";
+        foreach ($data as $key => $value) {
+            $currentPath = $path ? "{$path}.{$key}" : $key;
+
             if (is_array($value)) {
-                $result += $this->flatten($value, $newKey);
+                $this->traverseAndHash($value, $currentPath, $hashes);
             } else {
-                $result[$newKey] = $value;
+                $hashes[] = hash('sha256', json_encode([$currentPath => $value]));
             }
         }
-        return $result;
     }
 }
