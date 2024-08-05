@@ -46,8 +46,10 @@ The application's routing is configured as follows:
 
 ## Upload Status
 - Verified
+  
     ![image](https://github.com/user-attachments/assets/f449439e-0d90-4b42-962e-19d227ebac1f)
 - Error types
+  
     ![image](https://github.com/user-attachments/assets/261a9b42-ff8d-431b-93c4-53070c4f8700)
 
 
