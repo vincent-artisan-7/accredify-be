@@ -41,6 +41,9 @@ The application's routing is configured as follows:
 - JSON Upload Page: Allows authenticated users to upload JSON files.
     - URL: /json-upload
 
+## ERD diagram
+![accredify_be_erd (1)](https://github.com/user-attachments/assets/28109281-ff91-48a4-bedb-e0ce84bf982d)
+
 ### Frontend
 The project frontend is running React Typescript and InertiaJS rendering.
 
